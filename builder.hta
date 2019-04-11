@@ -1,0 +1,1015 @@
+<head>
+<title>Tech Docs Builder</title>
+<meta http-equiv="x-ua-compatible" content="ie=9" />
+<meta name="author" content="Jenny Pittman, BeyondTrust Corporation" />
+<!--
+	Instructions:
+	The Tech Docs Builder allows you to choose which targets you want to build across multiple projects and to build them all at once.
+	1.  For the builder to work, place the builder.hta file in the Windows folder where your Flare projects live. The projects can be all in one main folder or in any number of subfolders.
+	2.  Make sure that each project is uniquely named and that each project has the same name as its immediate folder (e.g. EN-Remote-Support\EN-Remote-Support.flprj).
+	3.  Open builder.hta. Select one or more projects, and then click Next or press Enter.
+	4.  Select one or more targets, and then click Next or press Enter.
+	5.  Review your build summary. You can Copy Text to your clipboard, pasting the list in Word or another program to review your selections more easily.
+	6.  You can click any step to modify the results. Be sure to click Next or press Enter after making a change. If you want to clear all selections, click Reset All.
+	7.  Click Start Build Now or press Enter.
+	8.  The first time you run this script, it creates a Build.cmd file. Every time thereafter, it modifies that file. When the builder runs Build.cmd, a command line interface opens, and a BuildOutput.txt file is created.
+	9.  The builder starts building the files. You will see the progress of your builds as they are started and completed. If an error occurs during a build, the information from the build log displays.
+	10. If you want to cancel a build you've started, click Cancel Build. Your build will stop within five seconds.
+	11. If you want to see all build messages as they are generated, click See Full Build Log. To return to the summary, click Return to Step View.
+	12. When the command line interface closes, your selected builds should be complete. You will see a completion message in the builder. You can access your builds in the Output folder of each project - or wherever your targets are configured to save.
+	
+	Note: If you close the command line interface or delete either Build.cmd or BuildOutput.txt before all builds are complete, the build cancels.
+	If you do need to intentionally cancel a build in progress, it is better to click Cancel Build.
+-->
+<!--
+	MIT License
+
+	Copyright (c) 2019 Jenny Pittman, BeyondTrust Corporation
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+-->
+<HTA:APPLICATION
+	APPLICATIONNAME="Tech Docs Builder"
+	SINGLEINSTANCE="yes"
+/>
+<style type="text/css">
+	body {
+		background-color: #53585a;
+		font-family: "Century Gothic";
+		font-size: 15px;
+	}
+	p {
+		clear: both;
+	}
+	h1 {
+		cursor: pointer;
+		font-size: 20px;
+		width: auto;
+	}
+	h1.rotate {
+		transform: rotate(-90deg);
+		transform-origin: 58% 775%;
+		width: 320px;
+	}
+	h1.rotate-off {
+		transform: rotate(0deg);
+	}
+	div.step, div.step-min, div.step-full {
+		background-color: #b8dff7;
+		border: 2px solid #f5f5eb;
+		float: left;
+		height: 400px;
+		margin: 5px;
+		padding: 10px;
+	}
+	div.step-min {
+		width: 20px;
+	}
+	div.step-full {
+		width: calc(100% - 35px);
+	}
+	div.review, div.full, select {
+		background-color: #f5f5eb;
+		border: 1px solid #000;
+		font-family: "Century Gothic";
+		font-size: 15px;
+		padding: 5px;
+		text-align: left;
+	}
+	div.review, div.full {
+		overflow-y: auto;
+		margin: 10px 0px;
+	}
+	div.review {
+		max-height: 278px;
+		max-width: 100%;
+	}
+	div.full {
+		height: 300px;
+		width: calc(100% - 12px);
+	}
+	#container4 {
+		max-width: 320px;
+	}
+	#progressPane {
+		max-height: 206px;
+	}
+	button {
+		background-color: #ff5500;
+		border: 1px solid #fff;
+		border-radius: 4px;
+		box-shadow: 1px 1px 5px 0px rgba(0,0,0,1);
+		color: #fff;
+		cursor: pointer;
+		font-family: "Century Gothic";
+		font-size: 15px;
+		height: 30px;
+		margin: 5px;
+		padding: 2px 10px;
+		text-align: center;
+	}
+	button:active {
+		box-shadow: inset 1px 1px 5px 0px rgba(0,0,0,0.75);
+	}
+	.error {
+		color: red;
+	}
+	.modal {
+		display: none;
+	}
+	.modalOn,.modalBuildOn {
+		background-color: #fff;
+		border-radius: 10px;
+		box-shadow: 1px 1px 5px 0px rgba(0,0,0,1);
+		display: block;
+		height: 50px;
+		top: calc(50% - 50px);
+		padding: 20px;
+		position: fixed;
+		text-align: center;
+		width: 70px;
+		left: calc(50% - 70px);
+		z-index: 10;
+	}
+	.modalBuildOn {
+		height: 60px;
+		top: calc(50% - 60px);
+		width: 100px;
+		left: calc(50% - 100px);
+	}
+	.pointerOff {
+		position: relative;
+	}
+	.pointerOff:after {
+		pointer-events: none;
+		background: rgba(0, 0, 0, 0);
+		content: " ";
+		z-index: 9;
+		display: block;
+		position: absolute;
+		height: 100%;
+		top: 0;
+		left: 0;
+		right: 0;
+		width: 100%;
+	}
+	.pointerOn {
+		pointer-events: auto;
+	}
+</style>
+
+<script language="VBScript">
+	''' Global variables and classes '''
+	Set objFSO = CreateObject("Scripting.FileSystemObject")
+	Set WshShell = CreateObject("WScript.Shell")
+	Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\.\root\cimv2")
+	Public selectMsg,numOfProjs,objCurrDir,availProjArr,buildArr,targetArr,startLine,startLineChanged,buildTotal,buildCount,buildComplete,buildActive,progArea,fullArea,progScroll,fullScroll,iTimer
+	selectMsg = "Please select at least one option from the list."
+	numOfProjs = 0
+	availProjArr = Array()
+	buildArr = Array()
+	targetArr = Array()
+	startLine = 0
+	startLineChanged = False
+	buildTotal = 0
+	buildCount = 0
+	buildComplete = False
+	buildActive = False
+	
+	Class availTarget
+		Public tarPath     ' C:\TechDocs\EN-Remote-Support\Project\Targets\release
+		Public tarFold     ' release/
+		Public tarName     ' rs-admin.fltar
+		Public tarProjPath ' C:\TechDocs\EN-Remote-Support
+		Public tarProj     ' EN-Remote-Support
+		Public tarFullPath ' C:\TechDocs\EN-Remote-Support\EN-Remote-Support.flprj
+	End Class
+	
+	Class buildInfo
+		Public line
+		Public text
+		Public cont
+	End Class
+	
+''' Scripts executed on page load '''
+	Sub Window_OnLoad
+		Dim thisHTALocation,hashPos
+		''' Set the current directory '''
+		thisHTALocation = document.location.href
+		thisHTALocation = Replace(Right(thisHTALocation,Len(thisHTALocation)-8),"/","\")
+		thisHTALocation = UnEscape(thisHTALocation)
+		
+		''' Remove any hash from the path '''
+		hashPos = InStr(thisHTALocation,"#")
+		If hashPos <> 0 Then thisHTALocation = Left(thisHTALocation,hashPos-1)
+		
+		Set objThisFile = objFSO.GetFile(thisHTALocation)
+		Set objFolder = objFSO.GetFolder(objThisFile.ParentFolder)
+		objCurrDir = objFolder.ShortPath
+		WshShell.CurrentDirectory = objCurrDir
+		
+		''' Add projects to the first select box '''
+		findProjects objFSO.GetFolder(objCurrDir)
+		
+		''' Set the progress areas '''
+		Set progArea = document.getElementById("progArea")
+		Set fullArea = document.getElementById("fullArea")
+		Set progScroll = document.getElementById("progScroll")
+		Set fullScroll = document.getElementById("fullScroll")
+	End Sub
+	
+	Sub findProjects(objFolder)
+		Dim pLen,projPath,projName
+		''' Search each folder for .flprj files '''
+		For Each objFile In objFolder.Files
+			If LCase(objFSO.GetExtensionName(objFile.Name)) = "flprj" Then
+				''' From the full path, remove the proj.flprj bit of the string '''
+				pLen = InStrRev(objFile.Path,"\")-1
+				projPath = Left(objFile.Path,pLen)
+				
+				''' From the remaining path, get just the final folder name '''
+				pLen = InStrRev(projPath,"\")+1
+				projName = Mid(projPath,pLen)
+				
+				ReDim Preserve availProjArr(numOfProjs)
+				availProjArr(numOfProjs) = projName
+				
+				''' Add the project to the select box '''
+				Set objOpt = document.CreateElement("OPTION")
+				objOpt.Value = projPath
+				objOpt.Text = projName
+				document.getElementById("sel1").appendChild(objOpt)
+				
+				''' Size the select box '''
+				numOfProjs = numOfProjs + 1
+				If numOfProjs < 15 Then
+					document.getElementById("sel1").size = numOfProjs
+				Else
+					document.getElementById("sel1").size = 15
+				End If
+				
+				Exit Sub
+			End If
+		Next
+		''' If no .flprj exists in the top folder, search each subfolder '''
+		For Each objSubFolder In objFolder.SubFolders
+			findProjects objSubFolder
+		Next
+	End Sub
+	
+''' Global scripts '''
+	Function IsArrayDimmed(arr)
+		IsArrayDimmed = False
+		If IsArray(arr) Then
+			On Error Resume Next
+			Dim ub : ub = UBound(arr)
+			If (Err.Number = 0) AND (ub >= 0) Then IsArrayDimmed = True
+		End If
+	End Function
+	
+	Sub shortcutKeys()
+		''' If the user presses Enter, click Next '''
+		If window.event.Keycode = 13 Then
+			Select Case document.activeElement.id
+				Case "sel1","all1","div1","container1"
+					listTargets()
+					Exit Sub
+				Case "sel2","all2","div2","container2"
+					writeSummary()
+					Exit Sub
+				Case "sel3","all3","div3","container3"
+					runBuild()
+					Exit Sub
+			End Select
+		End If
+	End Sub
+	
+	Sub resetAll(clearStepOne)
+		If clearStepOne = True Then
+			''' Deselect all projects '''
+			Set sel = document.getElementById("sel1")
+			For selOpt = 0 To sel.Length-1
+				sel.options(selOpt).selected = False
+			Next
+			document.getElementById("all1").innerHTML = "Select All"
+
+			''' Reset to the initial view '''
+			stepView()
+			ToggleOthersClosed("1")
+		End If
+		
+		''' Clear the list of targets '''
+		document.getElementById("sel2").innerHTML = ""
+		document.getElementById("all2").innerHTML = "Select All"
+		
+		''' Clear text display areas '''
+		document.getElementById("summary").innerHTML = ""
+		document.getElementById("progArea").innerHTML = ""
+		document.getElementById("fullArea").innerHTML = ""
+		
+		''' Clean up behind the scenes '''
+		cleanGlobals()
+		
+		''' Reset the test area '''
+		document.getElementById("testArea").innerHTML = ""
+		document.getElementById("testDiv").style.display = "none"
+	End Sub
+	
+	Sub cleanGlobals()
+		If IsArrayDimmed(buildArr) Then Erase buildArr
+		If IsArrayDimmed(targetArr) Then Erase targetArr
+		startLine = 0
+		startLineChanged = False
+		buildTotal = 0
+		buildCount = 0
+		buildComplete = False
+		buildActive = False
+		document.getElementById("cancelBuild").style.display = "none"
+		document.getElementById("resetAll").style.display = "inline-block"
+		Window.clearInterval(iTimer)
+	End Sub
+	
+	Sub Wait()
+		''' This is intentionally left blank to allow the OS to take a breath. Do not delete.
+	End Sub
+	
+	Function targetObj(target)
+		''' Create a target object from a target path '''
+		Dim targetMid,targetPath,targetFold,targetName,targetProjPath,currDirLen,targetProjMid,targetProj,targetFullPath,thisTarget
+		Set thisTarget = New availTarget
+		
+		''' The target used as the example is C:\TechDocs\EN-Remote-Support\Project\Targets\release\rs-admin.fltar '''
+		
+		''' Get the path without the target (C:\TechDocs\EN-Remote-Support\Project\Targets\release) '''
+		targetMid = InStrRev(target,"\")
+		targetPath = Mid(target,1,targetMid-1)
+		thisTarget.tarPath = targetPath
+		
+		''' Get the name of the last folder (release/) or set it to blank if it's not a subfolder '''
+		targetFold = Mid(targetPath,InStrRev(targetPath,"\")+1)
+		If targetFold = "Targets" Then targetFold = ""
+		thisTarget.tarFold = targetFold
+		
+		''' Get the target name (rs-admin.fltar) '''
+		targetName = Mid(target,targetMid+1)
+		thisTarget.tarName = targetName
+		
+		''' Get the project path (C:\TechDocs\EN-Remote-Support) '''
+		targetProjPath = Mid(target,1,InStr(target,"\Project")-1)
+		thisTarget.tarProjPath = targetProjPath
+		
+		''' Get the project name (EN-Remote-Support) '''
+		targetProjMid = InStrRev(targetProjPath,"\")
+		targetProj = Mid(targetProjPath,targetProjMid+1)
+		thisTarget.tarProj = targetProj
+		
+		''' Get the full project path (C:\TechDocs\EN-Remote-Support\EN-Remote-Support.flprj)
+		targetFullPath = targetProjPath & "\" & targetProj & ".flprj"
+		thisTarget.tarFullPath = targetFullPath
+		
+		Set targetObj = thisTarget
+	End Function
+	
+	Function checkForActiveBuild()
+		checkForActiveBuild = False
+		If buildActive Then
+			MsgBox("Your build is still running. Please allow it to finish or cancel the build before starting a new one.")
+			checkForActiveBuild = True
+		End If
+	End Function
+	
+''' Toggling scripts '''
+	Sub Toggle(id)
+		Set d = document.getElementById("div" & id)
+		Set c = document.getElementById("container" & id)
+		Set s = document.getElementById("step" & id)
+		If d.style.display = "none" Then
+			d.style.display = "block"
+			c.classname = "step"
+			s.classname = "rotate-off"
+		Else
+			d.style.display = "none"
+			c.classname = "step-min"
+			s.classname = "rotate"
+		End If
+	End Sub
+	
+	Sub ToggleOthersClosed(id)
+		For i = 1 To 4
+			Set curDiv = document.getElementById("div" & i)
+			If curDiv.style.display = "block" Then Toggle(i)
+		Next
+		Toggle(id)
+	End Sub
+	
+	Sub fullBuild()
+		document.getElementById("fullLog").style.display = "block"
+		document.getElementById("steps").style.display = "none"
+	End Sub
+	
+	Sub stepView()
+		document.getElementById("fullLog").style.display = "none"
+		document.getElementById("steps").style.display = "block"
+	End Sub
+	
+''' Scripts to manage select boxes '''
+	Function getSel(id)
+		Dim selLen,selArr
+		selArr = Array()
+		
+		Set sel = document.getElementById(id)
+		For selLen = 0 To sel.length-1
+			If sel.options(selLen).selected Then
+				If IsArrayDimmed(selArr) = False Then
+					ReDim selArr(0)
+					selArr(0) = sel.options(selLen).value
+				Else
+					ReDim Preserve selArr(UBound(selArr)+1)
+					selArr(UBound(selArr)) = sel.options(selLen).value
+				End If
+			End If
+		Next
+		
+		getSel = selArr
+	End Function
+	
+	Sub selectAll(id)
+		''' If a build is actively running, don't progress '''
+		If checkForActiveBuild Then Exit Sub
+		
+		Dim doSel,selText
+		doSel = True
+		selText = "Clear All&nbsp;"
+		Set sel = document.getElementById("sel" & id)
+		
+		''' If the first option is selected, clear all '''
+		If sel.options(0).selected Then
+			doSel = False
+			selText = "Select All"
+		End If
+		
+		For selLen = 0 To sel.length-1
+			sel.options(selLen).selected = doSel
+		Next
+		
+		document.getElementById("all" & id).innerHTML = selText
+	End Sub
+	
+	Sub listTargets()
+		''' If a build is actively running, don't progress '''
+		If checkForActiveBuild Then Exit Sub
+		
+		Dim n,selSize
+		Set resSel = document.getElementById("sel2")
+		n = 0
+		
+		''' Clear the target list, prior build progress, and test area '''
+		resetAll(False)
+		
+		For Each projPath In getSel("sel1")
+			setBuildArr projPath
+		Next
+		
+		''' Make sure at least one project is selected '''
+		If IsArrayDimmed(buildArr) = False Then
+			MsgBox(selectMsg)
+			Exit Sub
+		End If
+		
+		For Each folder In buildArr
+			''' Add an option group for each project '''
+			Set optGroup = document.CreateElement("OPTGROUP")
+			optGroup.Label = folder.tarProj
+			resSel.appendChild(optGroup)
+			
+			''' Add an option for each target '''
+			findTargets folder.tarPath,""
+			
+			''' Add an empty line between projects '''
+			If n < UBound(buildArr) Then
+				Set optGroup = document.CreateElement("OPTGROUP")
+				optGroup.Label = ""
+				resSel.appendChild(optGroup)
+				n = n + 1
+			End If
+		Next
+		
+		''' Size the select box '''
+		selSize = resSel.length + UBound(buildArr)*2 + 1
+		If selSize > 15 Then
+			resSel.size = 15
+		Else
+			resSel.size = selSize
+		End If
+		
+		''' Reset the target "Select All" button and open the target selection pane '''
+		document.getElementById("all2").innerHTML = "Select All"
+		ToggleOthersClosed(2)
+	End Sub
+	
+	Sub setBuildArr(projPath)
+		Dim arrVal
+		If IsArrayDimmed(buildArr) = False Then
+			arrVal = 0
+			ReDim buildArr(0)
+		Else
+			arrVal = UBound(buildArr)+1
+			ReDim Preserve buildArr(arrVal)
+		End If
+		
+		Set buildArr(arrVal) = New availTarget
+		buildArr(arrVal).tarPath = projPath & "\Project\Targets\"
+		buildArr(arrVal).tarProj = Mid(projPath,InStrRev(projPath,"\")+1)
+	End Sub
+	
+	Function findTargets(thisFolder,currFolder)
+		Dim filePath,fileSplit,fileFolder,fileShort,name
+		Set objFolder = objFSO.GetFolder(thisFolder)
+		Set colFiles = objFolder.Files
+		
+		''' If the top level folder has targets, add them to the list '''
+		For Each objFile In colFiles
+			filePath = Mid(objFile,InStr(objFile,"\Targets\")+9) ' Split the file path string after the targets folder
+			fileSplit = InStrRev(filePath,"\") ' Where the last backslash occurs
+			If fileSplit > 0 Then n = 1 ' Deal with a trailing backslash
+			fileFolder = Left(filePath,fileSplit-n) ' Get the names of any subfolders
+			fileShort = Right(filePath,Len(filePath)-fileSplit) ' Get the name of the target file
+			
+			If fileFolder <> currFolder Then
+				Set optGroup = document.CreateElement("OPTGROUP")
+				optGroup.Label = fileFolder
+				sel2.appendChild(optGroup)
+				currFolder = fileFolder
+			End If
+			
+			Set objOpt = document.CreateElement("OPTION")
+			objOpt.Value = objFile
+			objOpt.Text = chr(160) & chr(160) & chr(149) & chr(160) & fileShort
+			sel2.appendChild(objOpt)
+		Next
+		
+		''' Add subfolders and their files to the file array. '''
+		For Each SubFolder In objFolder.SubFolders
+			findTargets SubFolder,currFolder
+		Next
+	End Function
+	
+''' Scripts to show summaries '''
+	Sub writeSummary()
+		''' If a build is actively running, don't progress '''
+		If checkForActiveBuild Then Exit Sub
+		
+		Dim sumText,currProj,currFold,newProj
+		sumText = ""
+		currProj = ""
+		currFold = ""
+		newProj = True
+		
+		''' Check that at least one selection is made '''
+		If IsArrayDimmed(getSel("sel2")) = False Then
+			MsgBox(selectMsg)
+			Exit Sub
+		End If
+		
+		''' Find selected targets '''
+		For Each target In getSel("sel2")
+			Set tarObj = targetObj(target)
+			
+			''' If starting a new project, add it as a bold header '''
+			If currProj <> tarObj.tarProj Then
+				''' If it's not the first project to display, add an extra line '''
+				If currProj <> "" Then sumText = sumText & "<br/>"
+				
+				currProj = tarObj.tarProj
+				sumText = sumText & "<b>" & currProj & "</b><br/>"
+				currFold = ""
+			End If
+			
+			''' If it's in a new folder, add the folder as a bold header '''
+			If currFold <> tarObj.tarFold Then
+				currFold = tarObj.tarFold
+				sumText = sumText & "<b>" & currFold & "</b><br/>"
+			End If
+			
+			sumText = sumText & chr(160) & chr(160) & chr(149) & chr(160) & tarObj.tarName & "<br/>"
+		Next
+		
+		''' Show the results in the summary '''
+		document.getElementById("summary").innerHTML = sumText
+		ToggleOthersClosed("3")
+	End Sub
+
+''' Scripts to run the build '''	
+	Function writeBuildFile()
+		Dim targetFold
+		''' Create the batch file '''
+		Set outFile = objFSO.CreateTextFile("build.cmd",True)
+		writeSummary()
+		
+		''' Write the output to text '''
+		If objFSO.FileExists("BuildOutput.txt") Then objFSO.DeleteFile "BuildOutput.txt"
+		outFile.WriteLine ">BuildOutput.txt ("
+		
+		''' Move to the folder that contains the Flare app '''
+		outFile.WriteLine "CD /D ""C:\Program Files\MadCap Software\MadCap Flare 14\Flare.app"""
+		
+		''' Add targets to the build file '''
+		targetArr = getSel("sel2")
+		If IsArrayDimmed(targetArr) Then
+			For Each target In targetArr
+				Set tarObj = targetObj(target)
+				If tarObj.tarFold <> "" Then targetFold = tarObj.tarFold & "/"
+				outFile.WriteLine "madbuild -project """ & tarObj.tarFullPath & """ -target """ & targetFold & tarObj.tarName & """"
+				
+				buildTotal = buildTotal + 1
+			Next
+		Else
+			MsgBox(selectMsg)
+			writeBuildFile = False
+			Exit Function
+		End If
+		
+		''' Close the write stream '''
+		outFile.WriteLine ")"
+		outFile.Close
+		writeBuildFile = True
+	End Function
+	
+	Sub runBuild()
+		''' If a build is actively running, don't progress '''
+		If checkForActiveBuild Then Exit Sub
+		
+		If writeBuildFile() = False Then Exit Sub
+		
+		''' Set the status to active '''
+		buildActive = True
+		
+		''' Show the progress window and the cancel button, hide the reset button '''
+		ToggleOthersClosed(4)
+		document.getElementById("cancelBuild").style.display = "inline-block"
+		document.getElementById("resetAll").style.display = "none"
+		
+		''' Run the build file '''
+		WshShell.Run "Build.cmd"
+		
+		''' Add build progress messages to the progress window, wait five seconds, and repeat '''
+		checkProgress()
+		Window.setTimeout "Wait()",5000
+
+		WshShell.AppActivate("Tech Docs Builder")
+	End Sub
+	
+	Sub cancelBuild()
+		''' End all command shell processes '''
+		Set cmdProcess = objWMIService.ExecQuery ("Select * from Win32_Process Where Name = 'cmd.exe'")
+		For Each cmd In cmdProcess
+			cmd.Terminate
+		Next
+		
+		''' End all madbuild processes
+		Set madbuildProcess = objWMIService.ExecQuery ("Select * from Win32_Process Where Name = 'madbuild.exe'")
+		For Each mad In madbuildProcess
+			mad.Terminate()
+		Next
+		
+		resetAll(True)
+	End Sub
+	
+	Function checkIfCanceled()
+		''' Check if command line is running '''
+		Set colProcesses = objWMIService.ExecQuery ("Select * from Win32_Process Where Name = 'cmd.exe'")
+		If colProcesses.count > 0 Then
+			checkIfCanceled = False
+		Else
+			checkIfCanceled = True
+		End If
+	End Function
+	
+''' Scripts to show build progress '''
+	Sub checkProgress()
+		Dim buildFile,finishedCount
+		
+		''' Display a modal indicating build start '''
+		document.getElementById("modalBuild").classname = "modalBuildOn"
+		document.getElementById("mainWindow").classname = "pointerOff"
+		
+		''' Make sure the text file exists before you try to access it '''
+		buildFile = False
+		Do While buildFile = False
+			If objFSO.FileExists("BuildOutput.txt") Then buildFile = True
+		Loop
+		
+		iTimer = Window.setInterval("progLoop()",3000)
+	End Sub
+	
+	Sub progLoop()
+		Dim fileDate,readInfo,compNum
+		
+		''' Make sure the text file has been modified before trying to get messages from it '''
+		fileDate = objFSO.GetFile("BuildOutput.txt").DateLastModified
+		If Now > fileDate Then
+			Set readInfo = readBuild()
+			If startLineChanged = True Then startLine = readInfo.line
+			
+			''' If text is returned from the readBuild sub, add it to the progress pane '''
+			If Len(readInfo.text) > 0 Then
+				progArea.innerHTML = progArea.innerHTML & readInfo.text
+				progScroll.scrollIntoView(false)
+				
+				''' Turn off the build starting modal '''
+				document.getElementById("modalBuild").classname = "modal"
+				document.getElementById("mainWindow").classname = "pointerOn"
+			
+			''' If no text is returned, check to make sure the build is still running '''
+			Else
+				compNum = startLine
+				For i = 0 To 4
+					''' If the number of lines in the text file remains the same for 15 seconds, assume that something has caused the build to fail, and end the loop '''
+					If compNum = countLines() Then
+						Window.setTimeout "Wait()",3000
+						If 1 = 4 Then
+							''' If the command line window is still open, reset the count and keep checking for changed text '''
+							If checkIfCanceled() = True Then
+								progArea.innerHTML = progArea.innerHTML & "<hr/><p class=""error""><b>Build was canceled.</b></p>"
+								fullArea.innerHTML = fullArea.innerHTML & "<hr/><p class=""error""><b>Build was canceled.</b></p>"
+								progScroll.scrollIntoView(false)
+								fullScroll.scrollIntoView(false)
+								buildComplete = True
+								cleanGlobals()
+								Exit Sub
+							Else
+								i = -1
+							End If
+						End If
+					Else
+						Exit For
+					End If
+				Next
+			End If
+			startLine = readInfo.line
+			If readInfo.cont = False Then
+				buildComplete = True
+				cleanGlobals()
+				Exit Sub
+			End If
+		End If
+	End Sub
+	
+	Function readBuild()
+		''' Return specified lines to progLoop to add to the progress summary, and add all lines to the full log, formatting key messages '''
+		Dim thisBuild,buildText,arrBuildLines,endLine,textStr
+		Const ForReading = 1
+		arrBuildLines = Array()
+		Set thisBuild = New buildInfo
+		thisBuild.line = startLine
+		thisBuild.text = ""
+		thisBuild.cont = True
+		
+		''' Get the text file that logs the build progress '''
+		Set objFile = objFSO.OpenTextFile("BuildOutput.txt",ForReading)
+		buildText = ""
+		
+		''' Read all lines into an array '''
+		arrBuildLines = Split(objFile.ReadAll,vbLf)
+		endLine = UBound(arrBuildLines)
+		thisBuild.line = endLine
+		
+		''' Start with the designated line and read to the end '''
+		If endLine > 0 Then
+			''' Make sure it's not accidentally starting over '''
+			If startLine = 0 AND Len(progArea.innerText) > 180 Then
+				objFile.Close
+				thisBuild.cont = False
+				Set readBuild = thisBuild
+				Exit Function
+			End If
+			''' Add specified lines to the progress pane '''
+			For i = startLine To endLine
+				If InStr(arrBuildLines(i),"Compiling target") Then
+					fullArea.innerHTML = fullArea.innerHTML & "<p><b>" & arrBuildLines(i) & "</b></p>"
+					fullScroll.scrollIntoView(false)
+					
+					Set tarObj = targetObj(targetArr(buildCount))
+					
+					textStr = logText(arrBuildLines(i),"Compiling target")
+					textDate = timeStamp(arrBuildLines(i),"Compiling target")
+					buildCount = buildCount+1
+					buildText = buildText & "<p>" & textDate & "(" & buildCount & "/" & buildTotal & ") Building <b>" & tarObj.tarProj & ": " & textStr & "</b></p>"
+				ElseIf InStr(arrBuildLines(i),"Saving log to") Then
+					fullArea.innerHTML = fullArea.innerHTML & "<p><b>" & arrBuildLines(i) & "</b></p>"
+					fullScroll.scrollIntoView(false)
+					
+					textStr = logText(arrBuildLines(i),"Saving log to")
+					textDate = timeStamp(arrBuildLines(i),"Saving log to")
+					buildText = buildText & "<p>" & textDate & "Build of " & textStr & " has completed</p>"
+					
+					If buildCount = buildTotal Then
+						buildComplete = True
+						buildActive = False
+						Window.clearInterval(iTimer)
+						Exit For
+					End If
+				ElseIf InStr(arrBuildLines(i),"Error") OR InStr(arrBuildLines(i),"Build failed") Then
+					fullArea.innerHTML = fullArea.innerHTML & "<p class=""error"">" & arrBuildLines(i) & "</p>"
+					fullScroll.scrollIntoView(false)
+					
+					If InStr(arrBuildLines(i),"Error") Then
+						textStr = logText(arrBuildLines(i),"Error")
+						textDate = timeStamp(arrBuildLines(i),"Error")
+					Else
+						textStr = logText(arrBuildLines(i),"Build failed")
+						textDate = timeStamp(arrBuildLines(i),"Build failed")
+					End If
+					buildText = buildText & "<p class=""error"">" & textDate & textStr & "</p>"
+					If buildCount = buildTotal Then
+						buildComplete = True
+						buildActive = False
+						Window.clearInterval(iTimer)
+						Exit For
+					End If
+				Else
+					fullArea.innerHTML = fullArea.innerHTML & "<p>" & arrBuildLines(i) & "</p>"
+					If InStr(arrBuildLines(i),"Saving log to") AND buildCount = buildTotal Then
+						Window.clearInterval(iTimer)
+						fullArea.innerHTML = fullArea.innerHTML & "<hr/><p><b>All builds have completed.</b></p>"
+					End If
+					fullScroll.scrollIntoView(false)
+				End If
+			Next
+			
+			If buildComplete = True Then
+				Window.clearInterval(iTimer)
+				buildText = buildText & "<hr/><p><b>All builds have completed.</b></p>"
+				thisBuild.cont = False
+			End If
+			
+			thisBuild.text = buildText
+			startLineChanged = True
+		End If
+		
+		objFile.Close
+		Set readBuild = thisBuild
+	End Function
+	
+	Function countLines()
+		''' Count the number of lines in the output file '''
+		Dim arrCountLines
+		arrCountLines = Array()
+		Const ForReading = 1
+		Set objFile = objFSO.OpenTextFile("BuildOutput.txt",ForReading)
+		arrCountLines = Split(objFile.ReadAll,vbLf)
+		objFile.Close
+		countLines = UBound(arrCountLines)
+	End Function
+	
+	Function logText(logStr,srchStr)
+		Dim textArr
+		textArr = Array()
+		
+		''' If an error is found, return the whole string '''
+		If srchStr = "Build failed" OR srchStr = "Error" Then
+			logText = logStr
+		
+		''' Otherwise, get the relevant portion of the string '''
+		Else
+			textArr = Split(logStr,srchStr)
+			logText = Left(textArr(1),Len(textArr(1))-3)
+		End If
+	End Function
+	
+	Function timeStamp(logStr,srchStr)
+		Dim textArr,dateArr
+		textArr = Array()
+		dateArr = Array()
+		
+		''' If Flare is configured to show timestamps for build logs, get the precise timestamp '''
+		If InStr(logStr,srchStr) > 1 Then
+			textArr = Split(logStr,srchStr)
+			dateArr = Split(textArr(0)," ")
+			timeStamp = Left(dateArr(1),Len(dateArr(1))) & " - "
+		
+		''' Otherwise, use the current time '''
+		Else
+			dateArr = Split(Now," ")
+			timeStamp = Left(dateArr(1),Len(dateArr(1))) & " - "
+		End If
+	End Function
+	
+''' Scripts to copy text '''
+	Sub copyText(textBox)
+		Dim strCopy : strCopy = document.getElementById(textBox).innerText
+		document.parentWindow.clipboardData.SetData "text",strCopy
+		modalCopied()
+	End Sub
+	
+	Sub modalCopied()
+		document.getElementById("modalCopied").classname = "modalOn"
+		Window.setTimeout "modalOff()",1000
+	End Sub
+	
+	Sub modalOff()
+		document.getElementById("modalCopied").classname = "modal"
+	End Sub
+	
+''' Testing script '''
+	' Use this script to test your code. Enter a test phrase to check that a broken code has reached a certain point and/or enter a variable to see what its value is at that point in the code.
+	Sub testMe(text)
+		document.getElementById("testDiv").style.display = "block"
+		Set test = document.getElementById("testArea")
+		test.innerHTML = test.innerHTML & text & "<br />"
+	End Sub
+</script>
+</head>
+
+<body onload="Window_OnLoad()" onkeypress="shortcutKeys()">
+	<div id="mainWindow" class="pointerOn">
+		<div id="steps">
+			<div class="step" id="container1">
+				<h1 class="rotate-off" id="step1" onClick="Toggle('1')">Step 1: Which projects?</h1>
+				<div style="display:block" id="div1">
+					<p><select multiple id="sel1" onClick="checkForActiveBuild()"></select></p>
+					<p>
+						<button type="button" onClick="selectAll('1')" id="all1">Select All</button>
+						<button type="button" onClick="listTargets()">Next</button>
+					</p>
+				</div>
+			</div>
+			<div class="step-min" id="container2">
+				<h1 class="rotate" id="step2" onClick="Toggle('2')">Step 2: Which targets?</h1>
+				<div style="display:none" id="div2">
+					<p><select multiple id="sel2" onClick="checkForActiveBuild()"></select></p>
+					<p>
+						<button type="button" onClick="selectAll('2')" id="all2">Select All</button>
+						<button type="button" onClick="writeSummary()">Next</button>
+					</p>
+				</div>
+			</div>
+			<div class="step-min" id="container3">
+				<h1 class="rotate" id="step3" onClick="Toggle('3')">Step 3: All good?</h1>
+				<div style="display:none" id="div3">
+					<div class="review" id="summary"></div>
+					<p>
+						<button type="button" onClick="copyText('summary')">Copy Text</button>
+						<button type="button" onClick="runBuild()">Start Build Now</button>
+					</p>
+				</div>
+			</div>
+			<div class="step-min" id="container4">
+				<h1 class="rotate" id="step4" onClick="Toggle('4')">Step 4: View Build Progress</h1>
+				<div style="display:none" id="div4">
+				<p><b>IMPORTANT:</b> Closing command line cancels the build. Wait for the cancel message to appear below before starting a new build.</p>
+					<div id="progress">
+						<div id="progressPane" class="review" style="height:217px;">
+							<div id="progArea"></div>
+							<div id="progScroll">&nbsp;</div>
+						</div>
+						<p>
+							<button type="button" onClick="copyText('progArea')">Copy Text</button>
+							<button type="button" onClick="fullBuild()">See Full Build Log</button>
+						</p>
+					</div>
+				</div>
+			</div>
+			<div id="testDiv" style="display:none">
+				<div id="testArea" class="review"></div>
+				<button type="button" onClick="copyText('testArea')">Copy Text</button>
+			</div>
+		</div>
+		<div id="fullLog" class="step-full" style="display:none">
+			<div class="full">
+				<div id="fullArea"></div>
+				<div id="fullScroll">&nbsp;</div>
+			</div>
+			<p>
+				<button type="button" onClick="copyText('fullArea')">Copy Text</button>
+				<button type="button" onClick="stepView()">Return to Step View</button>
+			</p>
+		</div>
+		<p>
+			<button type="button" onClick="resetAll(true)" id="resetAll">Reset All</button>
+			<button type="button" onClick="cancelBuild()" id="cancelBuild" style="display:none">Cancel Build</button>
+		</p>
+		<div class="modal" id="modalCopied">
+			<p>Copied</p>
+		</div>
+	</div>
+	<div class="modal" id="modalBuild">
+		<p>Build starting.<br/>Please wait.</p>
+	</div>
+</body>
