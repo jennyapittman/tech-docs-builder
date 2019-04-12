@@ -634,7 +634,11 @@
 		If IsArrayDimmed(targetArr) Then
 			For Each target In targetArr
 				Set tarObj = targetObj(target)
-				If tarObj.tarFold <> "" Then targetFold = tarObj.tarFold & "/"
+				If tarObj.tarFold = "" Then
+					targetFold = ""
+				Else
+					targetFold = tarObj.tarFold & "/"
+				End If
 				outFile.WriteLine "madbuild -project """ & tarObj.tarFullPath & """ -target """ & targetFold & tarObj.tarName & """"
 				
 				buildTotal = buildTotal + 1
