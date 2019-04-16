@@ -639,7 +639,7 @@
 				Else
 					targetFold = tarObj.tarFold & "/"
 				End If
-				outFile.WriteLine "madbuild -project """ & tarObj.tarFullPath & """ -target """ & targetFold & tarObj.tarName & """"
+				outFile.WriteLine "madbuild -project """ & tarObj.tarFullPath & """ -target """ & targetFold & tarObj.tarName & """ -publishTarget false"
 				
 				buildTotal = buildTotal + 1
 			Next
