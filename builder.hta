@@ -286,46 +286,74 @@
 	Sub shortcutKeys()
 		''' If the user presses Enter, click Next '''
 		If window.event.Keycode = 13 Then
+			''' Check the active element and make sure the associated div is also open '''
 			Select Case document.activeElement.id
 				Case "sel1","all1","div1","container1"
-					listTargets()
-					Exit Sub
+					If document.getElementById("div1").style.display = "block" Then
+						listTargets()
+						Exit Sub
+					End If
 				Case "sel2","all2","div2","container2"
-					writeSummary()
-					Exit Sub
+					If document.getElementById("div2").style.display = "block" Then
+						writeSummary()
+						Exit Sub
+					End If
 				Case "sel3","all3","div3","container3"
-					runBuild()
-					Exit Sub
+					If document.getElementById("div1").style.display = "block" Then
+						runBuild()
+						Exit Sub
+					End If
 			End Select
+
+			''' If the active element and div don't match, take the action for the last open div '''
+			If document.getElementById("div3").style.display = "block" Then
+				runBuild()
+				Exit Sub
+			ElseIf document.getElementById("div2").style.display = "block" Then
+				writeSummary()
+				Exit Sub
+			ElseIf document.getElementById("div1").style.display = "block" Then
+				listTargets()
+				Exit Sub
+			End If
 		End If
 	End Sub
 	
-	Sub resetAll(clearStepOne)
-		If clearStepOne = True Then
-			''' Deselect all projects '''
-			Set sel = document.getElementById("sel1")
-			For selOpt = 0 To sel.Length-1
-				sel.options(selOpt).selected = False
-			Next
-			document.getElementById("all1").innerHTML = "Select All"
+	Sub resetAll
+		resetTest
+		resetProjects
+		resetTargets
+		resetDisplays
+		cleanGlobals
+	End Sub
+	
+	Sub resetProjects()
+		''' Deselect all projects '''
+		Set sel = document.getElementById("sel1")
+		For selOpt = 0 To sel.Length-1
+		sel.options(selOpt).selected = False
+		Next
+		document.getElementById("all1").innerHTML = "Select All"
 
-			''' Reset to the initial view '''
-			stepView()
-			ToggleOthersClosed("1")
-		End If
-		
+		''' Reset to the initial view '''
+		stepView()
+		ToggleOthersClosed("1")
+	End Sub
+	
+	Sub resetTargets()
 		''' Clear the list of targets '''
 		document.getElementById("sel2").innerHTML = ""
 		document.getElementById("all2").innerHTML = "Select All"
-		
+	End Sub
+	
+	Sub resetDisplays()
 		''' Clear text display areas '''
 		document.getElementById("summary").innerHTML = ""
 		document.getElementById("progArea").innerHTML = ""
 		document.getElementById("fullArea").innerHTML = ""
-		
-		''' Clean up behind the scenes '''
-		cleanGlobals()
-		
+	End Sub
+	
+	Sub resetTest()
 		''' Reset the test area '''
 		document.getElementById("testArea").innerHTML = ""
 		document.getElementById("testDiv").style.display = "none"
@@ -341,8 +369,13 @@
 		buildComplete = False
 		buildActive = False
 		document.getElementById("cancelBuild").style.display = "none"
+		document.getElementById("rebuild").style.display = "none"
 		document.getElementById("resetAll").style.display = "inline-block"
 		Window.clearInterval(iTimer)
+	End Sub
+	
+	Sub hideRebuild()
+		document.getElementById("rebuild").style.display = "none"
 	End Sub
 	
 	Sub Wait()
@@ -479,8 +512,11 @@
 		Set resSel = document.getElementById("sel2")
 		n = 0
 		
-		''' Clear the target list, prior build progress, and test area '''
-		resetAll(False)
+		''' Clear the target list and prior build progress '''
+		resetTargets
+		resetDisplays
+		cleanGlobals
+		document.getElementById("rebuild").style.display = "none"
 		
 		For Each projPath In getSel("sel1")
 			setBuildArr projPath
@@ -664,10 +700,15 @@
 		''' Set the status to active '''
 		buildActive = True
 		
+		''' Clear the build text display areas if previously filled '''
+		document.getElementById("progArea").innerHTML = ""
+		document.getElementById("fullArea").innerHTML = ""
+		
 		''' Show the progress window and the cancel button, hide the reset button '''
 		ToggleOthersClosed(4)
 		document.getElementById("cancelBuild").style.display = "inline-block"
 		document.getElementById("resetAll").style.display = "none"
+		document.getElementById("rebuild").style.display = "none"
 		
 		''' Run the build file '''
 		WshShell.Run "Build.cmd"
@@ -691,8 +732,6 @@
 		For Each mad In madbuildProcess
 			mad.Terminate()
 		Next
-		
-		resetAll(True)
 	End Sub
 	
 	Function checkIfCanceled()
@@ -747,7 +786,7 @@
 					''' If the number of lines in the text file remains the same for 15 seconds, assume that something has caused the build to fail, and end the loop '''
 					If compNum = countLines() Then
 						Window.setTimeout "Wait()",3000
-						If 1 = 4 Then
+						If i = 4 Then
 							''' If the command line window is still open, reset the count and keep checking for changed text '''
 							If checkIfCanceled() = True Then
 								progArea.innerHTML = progArea.innerHTML & "<hr/><p class=""error""><b>Build was canceled.</b></p>"
@@ -756,6 +795,7 @@
 								fullScroll.scrollIntoView(false)
 								buildComplete = True
 								cleanGlobals()
+								document.getElementById("rebuild").style.display = "inline-block"
 								Exit Sub
 							Else
 								i = -1
@@ -770,6 +810,7 @@
 			If readInfo.cont = False Then
 				buildComplete = True
 				cleanGlobals()
+				document.getElementById("rebuild").style.display = "inline-block"
 				Exit Sub
 			End If
 		End If
@@ -947,7 +988,7 @@
 			<div class="step" id="container1">
 				<h1 class="rotate-off" id="step1" onClick="Toggle('1')">Step 1: Which projects?</h1>
 				<div style="display:block" id="div1">
-					<p><select multiple id="sel1" onClick="checkForActiveBuild()"></select></p>
+					<p><select multiple id="sel1" onClick="checkForActiveBuild()" onChange="hideRebuild()"></select></p>
 					<p>
 						<button type="button" onClick="selectAll('1')" id="all1">Select All</button>
 						<button type="button" onClick="listTargets()">Next</button>
@@ -957,7 +998,7 @@
 			<div class="step-min" id="container2">
 				<h1 class="rotate" id="step2" onClick="Toggle('2')">Step 2: Which targets?</h1>
 				<div style="display:none" id="div2">
-					<p><select multiple id="sel2" onClick="checkForActiveBuild()"></select></p>
+					<p><select multiple id="sel2" onClick="checkForActiveBuild()" onChange="hideRebuild()"></select></p>
 					<p>
 						<button type="button" onClick="selectAll('2')" id="all2">Select All</button>
 						<button type="button" onClick="writeSummary()">Next</button>
@@ -1006,8 +1047,9 @@
 			</p>
 		</div>
 		<p>
-			<button type="button" onClick="resetAll(true)" id="resetAll">Reset All</button>
+			<button type="button" onClick="resetAll(true,true)" id="resetAll">Reset All</button>
 			<button type="button" onClick="cancelBuild()" id="cancelBuild" style="display:none">Cancel Build</button>
+			<button type="button" onClick="runBuild()" id="rebuild" style="display:none">Rebuild Current Targets</button>
 		</p>
 		<div class="modal" id="modalCopied">
 			<p>Copied</p>
