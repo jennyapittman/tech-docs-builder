@@ -653,7 +653,7 @@
 
 ''' Scripts to run the build '''	
 	Function writeBuildFile()
-		Dim targetFold
+		Dim targetFold,appFold
 		''' Create the batch file '''
 		Set outFile = objFSO.CreateTextFile("build.cmd",True)
 		writeSummary()
@@ -663,7 +663,11 @@
 		outFile.WriteLine ">BuildOutput.txt ("
 		
 		''' Move to the folder that contains the Flare app '''
-		outFile.WriteLine "CD /D ""C:\Program Files\MadCap Software\MadCap Flare 14\Flare.app"""
+		For Each objSubFolder In objFSO.GetFolder("C:\Program Files\MadCap Software").SubFolders
+			''' If multiple versions are installed, the correct folder should be the last in the list '''
+			appFold = objSubFolder
+		Next
+		outFile.WriteLine "CD /D """ & appFold & "\Flare.app"""
 		
 		''' Add targets to the build file '''
 		targetArr = getSel("sel2")
